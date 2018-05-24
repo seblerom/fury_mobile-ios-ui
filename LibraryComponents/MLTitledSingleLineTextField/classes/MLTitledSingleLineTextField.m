@@ -14,6 +14,9 @@
 
 static const CGFloat kMLTextFieldThinLine = 1;
 static const CGFloat kMLTextFieldThickLine = 2;
+NSString* const kSpace = @" ";
+NSString* const kZero = @"0";
+NSString* const kEmpty = @"";
 
 @interface MLTitledSingleLineTextField () <UITextFieldDelegate>
 @property (weak, nonatomic) IBOutlet UILabel *titleLabel;
@@ -29,8 +32,9 @@ static const CGFloat kMLTextFieldThickLine = 2;
 @property (nonatomic, readwrite) NSString *maskPattern;
 @property (nonatomic, readwrite) NSString *maskRepresentation;
 @property (nonatomic, readwrite) BOOL isHintShowable;
-@property (nonatomic, readwrite) NSString* lastCharacterTyped;
 @property (nonatomic, readwrite) NSMutableArray *mutablePattern;
+@property (nonatomic, readwrite) NSString* maskApplied;
+@property (strong, nonatomic) UITextRange* cursorPosition;
 @end
 
 @implementation MLTitledSingleLineTextField
@@ -369,9 +373,11 @@ static const CGFloat kMLTextFieldThickLine = 2;
 {
     self.textCache = textField.text;
     if ([self isMaskAvailable]){
-        if (![_lastCharacterTyped isEqualToString:@""]){
-            textField.text = [self maskCheck:textField.text];
-        }
+        UITextPosition * originalStart = textField.beginningOfDocument;
+        int offset = [self nextAvailablePositionForMaskWith:self.maskApplied];
+        UITextPosition* newPosition = [textField positionFromPosition:originalStart offset:offset];
+        textField.text = self.maskApplied;
+        textField.selectedTextRange = [textField textRangeFromPosition:newPosition toPosition:newPosition];
     }
     [self sendActionsForControlEvents:UIControlEventEditingChanged];
 }
@@ -398,6 +404,10 @@ static const CGFloat kMLTextFieldThickLine = 2;
 {
     BOOL shouldChange = YES;
     
+    if ([self isMaskAvailable]){
+        self.maskApplied = [self maskCheckWith:textField andLastCharacterTyped:string];
+    }
+    
     NSString *finalString = [textField.text stringByReplacingCharactersInRange:range withString:string];
     
     if (![self validateLength:finalString]) {
@@ -411,8 +421,6 @@ static const CGFloat kMLTextFieldThickLine = 2;
     if (shouldChange) {
         self.textCache = finalString;
     }
-    
-    _lastCharacterTyped = string;
     
     return shouldChange;
 }
@@ -510,11 +518,11 @@ static const CGFloat kMLTextFieldThickLine = 2;
 -(int)nextAvailablePositionForMaskWith:(NSString*)text{
     int position = 0;
     for (NSUInteger index = 0; index < [text length]; index++) {
-        position = (int)index;
         NSString * character = [text substringWithRange:NSMakeRange(index, 1)];
-        if ([character isEqualToString:@" "]){
+        if ([character isEqualToString:kSpace]){
             break;
         }
+        position = (int)index+1;
     }
     return position;
 }
@@ -523,30 +531,50 @@ static const CGFloat kMLTextFieldThickLine = 2;
     NSMutableArray* mutableText = [[NSMutableArray alloc] init];
     for (NSUInteger index = 0; index < [text length]; index++) {
         NSString * character = [text substringWithRange:NSMakeRange(index, 1)];
-        if([character intValue] || [character isEqualToString:@"0"]){
+        if([character intValue] || [character isEqualToString:kZero]){
             [mutableText addObject:character];
         }
     }
     return mutableText;
 }
 
--(NSString*)maskCheck:(NSString*)text{
+-(UITextRange*)retrieveCursorPosition:(UITextField*)textField andTextToShow:(NSString*)textToShow{
+    UITextPosition * originalStart = textField.beginningOfDocument;
+    int offset = [self nextAvailablePositionForMaskWith:textToShow];
+    UITextPosition* newPosition = [textField positionFromPosition:originalStart offset:offset];
+    return [textField textRangeFromPosition:newPosition toPosition:newPosition];
+}
+
+-(NSString*)maskCheckWith:(UITextField *)textfield andLastCharacterTyped:(NSString*)lastCharacterTyped{
     
-    NSMutableString* maskPatternCopy = [NSMutableString stringWithString:_maskPattern.copy];
-    NSMutableArray* mutableText = [self rawTextForMaskWith:text];
-    
-    for (NSUInteger index = 0; index < [_mutablePattern count]; index++) {
-        NSString* character = [_mutablePattern objectAtIndex:index];
-        if ([character isEqualToString:_maskRepresentation]){
-            if ([mutableText count] > 0){
-                [maskPatternCopy replaceCharactersInRange:NSMakeRange(index, 1) withString:[mutableText objectAtIndex:0]];
-                [mutableText removeObjectAtIndex:0];
-            }else{
-                break;
+    if (![lastCharacterTyped isEqualToString:kEmpty]){
+        NSMutableString* maskPatternCopy = [NSMutableString stringWithString:_maskPattern.copy];
+        NSMutableArray* mutableText = [self rawTextForMaskWith:[textfield.text stringByAppendingString:lastCharacterTyped]];
+        
+        for (NSUInteger index = 0; index < [_mutablePattern count]; index++) {
+            NSString* character = [_mutablePattern objectAtIndex:index];
+            if ([character isEqualToString:_maskRepresentation]){
+                if ([mutableText count] > 0){
+                    [maskPatternCopy replaceCharactersInRange:NSMakeRange(index, 1) withString:[mutableText objectAtIndex:0]];
+                    [mutableText removeObjectAtIndex:0];
+                }else{
+                    break;
+                }
             }
         }
+        return [maskPatternCopy stringByReplacingOccurrencesOfString:_maskRepresentation withString:kSpace];
+    }else{
+        NSString* character = [textfield.text substringWithRange:NSMakeRange([textfield.text length]-1, 1)];
+        if (![character intValue]){
+            NSLog(@"Character: %@",character);
+            UITextRange* selectedTextRange = textfield.selectedTextRange;
+            NSLog(@"%@", selectedTextRange);
+            return @"";
+        }
+        return [textfield.text stringByReplacingCharactersInRange:NSMakeRange([textfield.text length]-1, 1) withString:kSpace];
     }
-    return [maskPatternCopy stringByReplacingOccurrencesOfString:_maskRepresentation withString:@" "];
+    
+    
 }
 
 -(BOOL)isMaskAvailable{
