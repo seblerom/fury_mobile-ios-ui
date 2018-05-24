@@ -23,464 +23,534 @@ static const CGFloat kMLTextFieldThickLine = 2;
 @property (weak, nonatomic) IBOutlet UIView *textInputContainer;
 @property (weak, nonatomic) IBOutlet NSLayoutConstraint *lineViewHeight;
 @property (weak, nonatomic) IBOutlet UIView *accessoryViewContainer;
-
 @property (strong, nonatomic) UITextField *textField;
 @property (copy, nonatomic) NSString *textCache;
-
+#pragma mark Mask variables
+@property (nonatomic, readwrite) NSString *maskPattern;
+@property (nonatomic, readwrite) NSString *maskRepresentation;
+@property (nonatomic, readwrite) BOOL isHintShowable;
+@property (nonatomic, readwrite) NSString* lastCharacterTyped;
+@property (nonatomic, readwrite) NSMutableArray *mutablePattern;
 @end
 
 @implementation MLTitledSingleLineTextField
 
 - (instancetype)initWithCoder:(NSCoder *)aDecoder
 {
-	self = [super initWithCoder:aDecoder];
-	if (self) {
-		[self commonInit];
-	}
-	return self;
+    self = [super initWithCoder:aDecoder];
+    if (self) {
+        [self commonInit];
+    }
+    return self;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame
 {
-	self = [super initWithFrame:frame];
-	if (self) {
-		[self commonInit];
-	}
-	return self;
+    self = [super initWithFrame:frame];
+    if (self) {
+        [self commonInit];
+    }
+    return self;
 }
 
 - (void)commonInit
 {
-	[self loadFromNib];
-	[self addTextInput];
-	[self style];
-	[self updateCharacterCount];
-	[self observeText];
+    [self loadFromNib];
+    [self addTextInput];
+    [self style];
+    [self updateCharacterCount];
+    [self observeText];
 }
 
 - (void)loadFromNib
 {
-	NSString *nibName = @"MLTitledLineTextField";
-	NSArray *nibArray = [[MLUIBundle mluiBundle] loadNibNamed:nibName
-		                                                owner:self
-		                                              options:nil];
-	UIView *view = nibArray.firstObject;
-	view.translatesAutoresizingMaskIntoConstraints = NO;
-	[self addSubview:view];
-
-	NSDictionary *views = @{@"view" : view};
-	[self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|-0-[view]-0-|"
-	                                                             options:0
-	                                                             metrics:nil
-	                                                               views:views]];
-	[self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-0-[view]-0-|"
-	                                                             options:0
-	                                                             metrics:nil
-	                                                               views:views]];
+    NSString *nibName = @"MLTitledLineTextField";
+    NSArray *nibArray = [[MLUIBundle mluiBundle] loadNibNamed:nibName
+                                                        owner:self
+                                                      options:nil];
+    UIView *view = nibArray.firstObject;
+    view.translatesAutoresizingMaskIntoConstraints = NO;
+    [self addSubview:view];
+    
+    NSDictionary *views = @{@"view" : view};
+    [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|-0-[view]-0-|"
+                                                                 options:0
+                                                                 metrics:nil
+                                                                   views:views]];
+    [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-0-[view]-0-|"
+                                                                 options:0
+                                                                 metrics:nil
+                                                                   views:views]];
 }
 
 - (void)addTextInput
 {
-	UIView *textInput = self.textInputControl;
-	if (!textInput) {
-		return;
-	}
-
-	textInput.translatesAutoresizingMaskIntoConstraints = NO;
-	[self.textInputContainer addSubview:textInput];
-
-	NSDictionary *views = @{@"view" : textInput};
-	[self.textInputContainer addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|-0-[view]-0-|"
-	                                                                                options:0
-	                                                                                metrics:nil
-	                                                                                  views:views]];
-	[self.textInputContainer addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-0-[view]-0-|"
-	                                                                                options:0
-	                                                                                metrics:nil
-	                                                                                  views:views]];
+    UIView *textInput = self.textInputControl;
+    if (!textInput) {
+        return;
+    }
+    
+    textInput.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.textInputContainer addSubview:textInput];
+    
+    NSDictionary *views = @{@"view" : textInput};
+    [self.textInputContainer addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|-0-[view]-0-|"
+                                                                                    options:0
+                                                                                    metrics:nil
+                                                                                      views:views]];
+    [self.textInputContainer addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-0-[view]-0-|"
+                                                                                    options:0
+                                                                                    metrics:nil
+                                                                                      views:views]];
 }
 
 - (void)style
 {
-	self.textField.font = [UIFont ml_regularSystemFontOfSize:kMLFontsSizeMedium];
-	self.titleLabel.font = [UIFont ml_regularSystemFontOfSize:kMLFontsSizeXSmall];
-	self.titleLabel.textColor = MLStyleSheetManager.styleSheet.greyColor;
-	self.accessoryLabel.font = [UIFont ml_regularSystemFontOfSize:kMLFontsSizeXSmall];
-	self.placeholderLabel.font = [UIFont ml_regularSystemFontOfSize:kMLFontsSizeMedium];
-	self.placeholderLabel.textColor = MLStyleSheetManager.styleSheet.greyColor;
-	[self stateDependantStyle];
+    self.textField.font = [UIFont ml_regularSystemFontOfSize:kMLFontsSizeMedium];
+    self.titleLabel.font = [UIFont ml_regularSystemFontOfSize:kMLFontsSizeXSmall];
+    self.titleLabel.textColor = MLStyleSheetManager.styleSheet.greyColor;
+    self.accessoryLabel.font = [UIFont ml_regularSystemFontOfSize:kMLFontsSizeXSmall];
+    self.placeholderLabel.font = [UIFont ml_regularSystemFontOfSize:kMLFontsSizeMedium];
+    self.placeholderLabel.textColor = MLStyleSheetManager.styleSheet.greyColor;
+    [self stateDependantStyle];
 }
 
 - (void)stateDependantStyle
 {
-	UIColor *textColor = MLStyleSheetManager.styleSheet.blackColor;
-	UIColor *lineColor = MLStyleSheetManager.styleSheet.midGreyColor;
-	UIColor *labelColor = MLStyleSheetManager.styleSheet.greyColor;
-	UIColor *accessoryLabelColor = MLStyleSheetManager.styleSheet.darkGreyColor;
-	CGFloat lineHeight = kMLTextFieldThinLine;
-
-	switch (self.state) {
-		case MLTitledTextFieldStateDisabled: {
-			textColor = MLStyleSheetManager.styleSheet.midGreyColor;
-			labelColor = MLStyleSheetManager.styleSheet.midGreyColor;
-			break;
-		}
-
-		case MLTitledTextFieldStateEditing: {
-			lineColor = MLStyleSheetManager.styleSheet.secondaryColor;
-			lineHeight = kMLTextFieldThickLine;
-			break;
-		}
-
-		case MLTitledTextFieldStateError: {
-			lineColor = accessoryLabelColor = MLStyleSheetManager.styleSheet.errorColor;
-			lineHeight = kMLTextFieldThickLine;
-			break;
-		}
-
-		default: {
-			lineColor = MLStyleSheetManager.styleSheet.midGreyColor;
-			break;
-		}
-	}
-
-	__weak typeof(self)weakSelf = self;
-
-	[UIView animateWithDuration:.25f animations: ^{
-	    weakSelf.placeholderLabel.alpha = weakSelf.text.length ? 0 : 1;
-	}];
-
-	[UIView animateWithDuration:.5f animations: ^{
-	    weakSelf.textField.textColor = textColor;
-	    weakSelf.titleLabel.textColor = labelColor;
-	    weakSelf.lineView.backgroundColor = lineColor;
-	    weakSelf.textField.tintColor = lineColor;
-	    weakSelf.lineViewHeight.constant = lineHeight;
-	    weakSelf.accessoryLabel.textColor = accessoryLabelColor;
-	}];
+    UIColor *textColor = MLStyleSheetManager.styleSheet.blackColor;
+    UIColor *lineColor = MLStyleSheetManager.styleSheet.midGreyColor;
+    UIColor *labelColor = MLStyleSheetManager.styleSheet.greyColor;
+    UIColor *accessoryLabelColor = MLStyleSheetManager.styleSheet.darkGreyColor;
+    CGFloat lineHeight = kMLTextFieldThinLine;
+    
+    switch (self.state) {
+            case MLTitledTextFieldStateDisabled: {
+                textColor = MLStyleSheetManager.styleSheet.midGreyColor;
+                labelColor = MLStyleSheetManager.styleSheet.midGreyColor;
+                break;
+            }
+            
+            case MLTitledTextFieldStateEditing: {
+                lineColor = MLStyleSheetManager.styleSheet.secondaryColor;
+                lineHeight = kMLTextFieldThickLine;
+                break;
+            }
+            
+            case MLTitledTextFieldStateError: {
+                lineColor = accessoryLabelColor = MLStyleSheetManager.styleSheet.errorColor;
+                lineHeight = kMLTextFieldThickLine;
+                break;
+            }
+            
+        default: {
+            lineColor = MLStyleSheetManager.styleSheet.midGreyColor;
+            break;
+        }
+    }
+    
+    __weak typeof(self)weakSelf = self;
+    
+    [UIView animateWithDuration:.25f animations: ^{
+        weakSelf.placeholderLabel.alpha = weakSelf.text.length ? 0 : 1;
+    }];
+    
+    [UIView animateWithDuration:.5f animations: ^{
+        weakSelf.textField.textColor = textColor;
+        weakSelf.titleLabel.textColor = labelColor;
+        weakSelf.lineView.backgroundColor = lineColor;
+        weakSelf.textField.tintColor = lineColor;
+        weakSelf.lineViewHeight.constant = lineHeight;
+        weakSelf.accessoryLabel.textColor = accessoryLabelColor;
+    }];
 }
 
 - (void)setupInnerTextWithAlignment:(NSTextAlignment)textAlignment
 {
-	self.placeholderLabel.textAlignment = textAlignment;
-	self.titleLabel.textAlignment = textAlignment;
-	self.textField.textAlignment = textAlignment;
-	self.accessoryLabel.textAlignment = textAlignment;
+    self.placeholderLabel.textAlignment = textAlignment;
+    self.titleLabel.textAlignment = textAlignment;
+    self.textField.textAlignment = textAlignment;
+    self.accessoryLabel.textAlignment = textAlignment;
 }
 
 - (void)updateCharacterCount
 {
-	if (!self.charactersCountVisible) {
-		return;
-	}
-
-	NSString *countString;
-	if (self.maxCharacters) {
-		NSString *format = [MLTitledSingleLineStringProvider localizedString:@"CHARACTER_COUNT_FORMAT"];
-		countString = [NSString stringWithFormat:format, (unsigned long)self.text.length, (unsigned long)self.maxCharacters];
-	} else {
-		countString = [NSString stringWithFormat:@"%lu", (unsigned long)self.text.length];
-	}
-
-	self.helperDescription = countString;
+    if (!self.charactersCountVisible) {
+        return;
+    }
+    
+    NSString *countString;
+    if (self.maxCharacters) {
+        NSString *format = [MLTitledSingleLineStringProvider localizedString:@"CHARACTER_COUNT_FORMAT"];
+        countString = [NSString stringWithFormat:format, (unsigned long)self.text.length, (unsigned long)self.maxCharacters];
+    } else {
+        countString = [NSString stringWithFormat:@"%lu", (unsigned long)self.text.length];
+    }
+    
+    self.helperDescription = countString;
 }
 
 - (void)observeText
 {
-	[self addObserver:self
-	       forKeyPath:NSStringFromSelector(@selector(text))
-	          options:NSKeyValueObservingOptionNew | NSKeyValueObservingOptionOld
-	          context:nil];
+    [self addObserver:self
+           forKeyPath:NSStringFromSelector(@selector(text))
+              options:NSKeyValueObservingOptionNew | NSKeyValueObservingOptionOld
+              context:nil];
 }
 
 #pragma mark Custom Setters
 
 - (void)setText:(NSString *)text
 {
-	if (![self validateLength:text]) {
-		return;
-	}
-	self.textCache = text;
-	self.textField.text = text;
-	[self style];
+    if (![self validateLength:text]) {
+        return;
+    }
+    self.textCache = text;
+    self.textField.text = text;
+    [self style];
 }
 
 - (void)setTitle:(NSString *)title
 {
-	_title = title.copy;
-	self.titleLabel.text = title;
+    _title = title.copy;
+    self.titleLabel.text = title;
 }
 
 - (void)setHelperDescription:(NSString *)helperDescription
 {
-	if (self.errorDescription) {
-		return;
-	}
-
-	_helperDescription = helperDescription;
-	self.accessoryLabel.text = _helperDescription;
+    if (self.errorDescription) {
+        return;
+    }
+    
+    _helperDescription = helperDescription;
+    self.accessoryLabel.text = _helperDescription;
 }
 
 - (void)setErrorDescription:(NSString *)errorDescription
 {
-	if (errorDescription == _errorDescription
-	    || [errorDescription isEqualToString:_errorDescription]) {
-		return;
-	}
-
-	_errorDescription = errorDescription.copy;
-	__weak typeof(self)weakSelf = self;
-
-	if (!_errorDescription && self.helperDescription.length) {
-		[self updateCharacterCount];
-		self.accessoryLabel.text = self.helperDescription;
-		return;
-	}
-
-	[UIView animateWithDuration:0.3 animations: ^{
-	    weakSelf.accessoryLabel.text = errorDescription;
-	    [weakSelf.accessoryLabel invalidateIntrinsicContentSize];
-	    [weakSelf setNeedsLayout];
-	    [weakSelf layoutIfNeeded];
-	}];
-	[self style];
+    if (errorDescription == _errorDescription
+        || [errorDescription isEqualToString:_errorDescription]) {
+        return;
+    }
+    
+    _errorDescription = errorDescription.copy;
+    __weak typeof(self)weakSelf = self;
+    
+    if (!_errorDescription && self.helperDescription.length) {
+        [self updateCharacterCount];
+        self.accessoryLabel.text = self.helperDescription;
+        return;
+    }
+    
+    [UIView animateWithDuration:0.3 animations: ^{
+        weakSelf.accessoryLabel.text = errorDescription;
+        [weakSelf.accessoryLabel invalidateIntrinsicContentSize];
+        [weakSelf setNeedsLayout];
+        [weakSelf layoutIfNeeded];
+    }];
+    [self style];
 }
 
 - (void)setPlaceholder:(NSString *)placeholder
 {
-	self.placeholderLabel.text = placeholder;
+    self.placeholderLabel.text = placeholder;
 }
 
 - (void)setEnabled:(BOOL)enabled
 {
-	[super setEnabled:enabled];
-	self.textField.userInteractionEnabled = enabled;
-	[self style];
+    [super setEnabled:enabled];
+    self.textField.userInteractionEnabled = enabled;
+    [self style];
 }
 
 - (void)setMaxCharacters:(NSUInteger)maxCharacters
 {
-	_maxCharacters = maxCharacters;
-	[self updateCharacterCount];
+    _maxCharacters = maxCharacters;
+    [self updateCharacterCount];
 }
 
 - (void)setCharactersCountVisible:(BOOL)charactersCountVisible
 {
-	_charactersCountVisible = charactersCountVisible;
-	[self updateCharacterCount];
+    _charactersCountVisible = charactersCountVisible;
+    [self updateCharacterCount];
 }
 
 - (void)setAccessoryView:(UIView *)accessoryView
 {
-	[self.accessoryView removeFromSuperview];
-	[accessoryView removeFromSuperview];
-
-	UIView *container = self.accessoryViewContainer;
-	_accessoryView = accessoryView;
-	accessoryView.translatesAutoresizingMaskIntoConstraints = NO;
-
-	UILayoutConstraintAxis axis = UILayoutConstraintAxisHorizontal;
-	CGFloat contentHugging = [container contentHuggingPriorityForAxis:axis];
-	[accessoryView setContentHuggingPriority:contentHugging forAxis:axis];
-	CGFloat compressionResistance = [container contentCompressionResistancePriorityForAxis:axis];
-	[accessoryView setContentCompressionResistancePriority:compressionResistance forAxis:axis];
-	[container addSubview:accessoryView];
-
-	NSDictionary *views = @{@"view" : accessoryView};
-	[container addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|-0-[view]-0-|"
-	                                                                  options:0
-	                                                                  metrics:nil
-	                                                                    views:views]];
-	[container addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-0-[view]-0-|"
-	                                                                  options:0
-	                                                                  metrics:nil
-	                                                                    views:views]];
-	[self setNeedsLayout];
+    [self.accessoryView removeFromSuperview];
+    [accessoryView removeFromSuperview];
+    
+    UIView *container = self.accessoryViewContainer;
+    _accessoryView = accessoryView;
+    accessoryView.translatesAutoresizingMaskIntoConstraints = NO;
+    
+    UILayoutConstraintAxis axis = UILayoutConstraintAxisHorizontal;
+    CGFloat contentHugging = [container contentHuggingPriorityForAxis:axis];
+    [accessoryView setContentHuggingPriority:contentHugging forAxis:axis];
+    CGFloat compressionResistance = [container contentCompressionResistancePriorityForAxis:axis];
+    [accessoryView setContentCompressionResistancePriority:compressionResistance forAxis:axis];
+    [container addSubview:accessoryView];
+    
+    NSDictionary *views = @{@"view" : accessoryView};
+    [container addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|-0-[view]-0-|"
+                                                                      options:0
+                                                                      metrics:nil
+                                                                        views:views]];
+    [container addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-0-[view]-0-|"
+                                                                      options:0
+                                                                      metrics:nil
+                                                                        views:views]];
+    [self setNeedsLayout];
 }
 
 - (void)setKeyboardType:(UIKeyboardType)keyboardType
 {
-	_keyboardType = keyboardType;
-
-	self.textField.keyboardType = keyboardType;
+    _keyboardType = keyboardType;
+    
+    self.textField.keyboardType = keyboardType;
 }
 
 - (void)setAutocapitalizationType:(UITextAutocapitalizationType)autocapitalizationType
 {
-	_autocapitalizationType = autocapitalizationType;
-
-	self.textField.autocapitalizationType = autocapitalizationType;
+    _autocapitalizationType = autocapitalizationType;
+    
+    self.textField.autocapitalizationType = autocapitalizationType;
 }
 
 - (void)setSecureTextEntry:(BOOL)secureTextEntry
 {
-	_secureTextEntry = secureTextEntry;
-
-	self.textField.secureTextEntry = secureTextEntry;
+    _secureTextEntry = secureTextEntry;
+    
+    self.textField.secureTextEntry = secureTextEntry;
 }
 
 #pragma mark Custom getters
 
 - (NSString *)text
 {
-	return self.textCache ? self.textCache : @"";
+    return self.textCache ? self.textCache : @"";
 }
 
 - (UIView <UITextInputTraits, UITextInput> *)textInputControl
 {
-	if (!self.textField) {
-		self.textField = [[UITextField alloc] init];
-		self.textField.delegate = self;
-		[self.textField addTarget:self
-		                   action:@selector(textFieldDidChange:)
-		         forControlEvents:UIControlEventEditingChanged];
-	}
-	return self.textField;
+    if (!self.textField) {
+        self.textField = [[UITextField alloc] init];
+        self.textField.delegate = self;
+        [self.textField addTarget:self
+                           action:@selector(textFieldDidChange:)
+                 forControlEvents:UIControlEventEditingChanged];
+    }
+    return self.textField;
 }
 
 - (NSString *)placeholder
 {
-	return self.placeholderLabel.text;
+    return self.placeholderLabel.text;
 }
 
 #pragma mark State handling
 
 - (MLTitledTextFieldState)state
 {
-	if (!self.isEnabled) {
-		return MLTitledTextFieldStateDisabled;
-	}
-	if (self.errorDescription.length) {
-		return MLTitledTextFieldStateError;
-	}
-	if (self.isFirstResponder) {
-		return MLTitledTextFieldStateEditing;
-	}
-	return MLTitledTextFieldStateNormal;
+    if (!self.isEnabled) {
+        return MLTitledTextFieldStateDisabled;
+    }
+    if (self.errorDescription.length) {
+        return MLTitledTextFieldStateError;
+    }
+    if (self.isFirstResponder) {
+        return MLTitledTextFieldStateEditing;
+    }
+    return MLTitledTextFieldStateNormal;
 }
 
 #pragma mark TextViewDelegate
 
 - (void)textFieldDidChange:(UITextField *)textField
 {
-	self.textCache = textField.text;
-	[self sendActionsForControlEvents:UIControlEventEditingChanged];
+    self.textCache = textField.text;
+    if ([self isMaskAvailable]){
+        if (![_lastCharacterTyped isEqualToString:@""]){
+            textField.text = [self maskCheck:textField.text];
+        }
+    }
+    [self sendActionsForControlEvents:UIControlEventEditingChanged];
 }
 
 - (void)textFieldDidBeginEditing:(UITextField *)textView
 {
-	[self style];
-	if ([self.delegate respondsToSelector:@selector(textFieldDidBeginEditing:)]) {
-		[self.delegate textFieldDidBeginEditing:self];
-	}
-	[self sendActionsForControlEvents:UIControlEventEditingDidBegin];
+    [self style];
+    if ([self.delegate respondsToSelector:@selector(textFieldDidBeginEditing:)]) {
+        [self.delegate textFieldDidBeginEditing:self];
+    }
+    [self sendActionsForControlEvents:UIControlEventEditingDidBegin];
 }
 
 - (void)textFieldDidEndEditing:(UITextField *)textView
 {
-	[self style];
-	if ([self.delegate respondsToSelector:@selector(textFieldDidEndEditing:)]) {
-		[self.delegate textFieldDidEndEditing:self];
-	}
-	[self sendActionsForControlEvents:UIControlEventEditingDidEnd];
+    [self style];
+    if ([self.delegate respondsToSelector:@selector(textFieldDidEndEditing:)]) {
+        [self.delegate textFieldDidEndEditing:self];
+    }
+    [self sendActionsForControlEvents:UIControlEventEditingDidEnd];
 }
 
 - (BOOL)textField:(UITextField *)textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string
 {
-	BOOL shouldChange = YES;
-	NSString *finalString = [textField.text stringByReplacingCharactersInRange:range withString:string];
-	if (![self validateLength:finalString]) {
-		shouldChange = NO;
-	}
-
-	if (shouldChange && [self.delegate respondsToSelector:@selector(textField:shouldChangeCharactersInRange:replacementString:)]) {
-		shouldChange = [self.delegate textField:self shouldChangeCharactersInRange:range replacementString:string];
-	}
-
-	if (shouldChange) {
-		self.textCache = finalString;
-	}
-
-	return shouldChange;
+    BOOL shouldChange = YES;
+    
+    NSString *finalString = [textField.text stringByReplacingCharactersInRange:range withString:string];
+    
+    if (![self validateLength:finalString]) {
+        shouldChange = NO;
+    }
+    
+    if (shouldChange && [self.delegate respondsToSelector:@selector(textField:shouldChangeCharactersInRange:replacementString:)]) {
+        shouldChange = [self.delegate textField:self shouldChangeCharactersInRange:range replacementString:string];
+    }
+    
+    if (shouldChange) {
+        self.textCache = finalString;
+    }
+    
+    _lastCharacterTyped = string;
+    
+    return shouldChange;
 }
 
 - (BOOL)textFieldShouldBeginEditing:(UITextField *)textField
 {
-	if ([self.delegate respondsToSelector:@selector(textFieldShouldBeginEditing:)]) {
-		return [self.delegate textFieldShouldBeginEditing:self];
-	}
-	return YES;
+    if ([self.delegate respondsToSelector:@selector(textFieldShouldBeginEditing:)]) {
+        return [self.delegate textFieldShouldBeginEditing:self];
+    }
+    return YES;
 }
 
 - (BOOL)textFieldShouldEndEditing:(UITextField *)textField
 {
-	if ([self.delegate respondsToSelector:@selector(textFieldShouldEndEditing:)]) {
-		return [self.delegate textFieldShouldEndEditing:self];
-	}
-	return YES;
+    if ([self.delegate respondsToSelector:@selector(textFieldShouldEndEditing:)]) {
+        return [self.delegate textFieldShouldEndEditing:self];
+    }
+    return YES;
 }
 
 - (BOOL)textFieldShouldReturn:(UITextField *)textField
 {
-	if ([self.delegate respondsToSelector:@selector(textFieldShouldReturn:)]) {
-		return [self.delegate textFieldShouldReturn:self];
-	}
-	return YES;
+    if ([self.delegate respondsToSelector:@selector(textFieldShouldReturn:)]) {
+        return [self.delegate textFieldShouldReturn:self];
+    }
+    return YES;
 }
 
 #pragma mark UIResponder
 
 - (BOOL)isFirstResponder
 {
-	return self.textField.isFirstResponder;
+    return self.textField.isFirstResponder;
 }
 
 - (BOOL)becomeFirstResponder
 {
-	return self.textField.becomeFirstResponder;
+    return self.textField.becomeFirstResponder;
 }
 
 - (BOOL)canBecomeFirstResponder
 {
-	return self.textField.canBecomeFirstResponder;
+    return self.textField.canBecomeFirstResponder;
 }
 
 - (BOOL)resignFirstResponder
 {
-	return self.textField.resignFirstResponder;
+    return self.textField.resignFirstResponder;
 }
 
 - (BOOL)canResignFirstResponder
 {
-	return self.textField.canResignFirstResponder;
+    return self.textField.canResignFirstResponder;
 }
 
 #pragma mark Validations
 
 - (BOOL)validateLength:(NSString *)string
 {
-	return !(self.maxCharacters && string.length > self.maxCharacters);
+    return !(self.maxCharacters && string.length > self.maxCharacters);
 }
 
 #pragma mark KVO
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary <NSString *, id> *)change context:(void *)context
 {
-	if ([keyPath isEqualToString:NSStringFromSelector(@selector(text))]) {
-		[self updateCharacterCount];
-		self.errorDescription = nil;
-		[self style];
-	}
+    if ([keyPath isEqualToString:NSStringFromSelector(@selector(text))]) {
+        [self updateCharacterCount];
+        self.errorDescription = nil;
+        [self style];
+    }
 }
 
 - (void)dealloc
 {
-	[self removeObserver:self forKeyPath:NSStringFromSelector(@selector(text))];
+    [self removeObserver:self forKeyPath:NSStringFromSelector(@selector(text))];
 }
 
 + (NSSet *)keyPathsForValuesAffectingText
 {
-	return [NSSet setWithObject:@"textCache"];
+    return [NSSet setWithObject:@"textCache"];
+}
+
+#pragma mark Mask
+-(void)setMaskPattern:(NSString *)maskPattern maskRepresentation:(NSString *)maskRepresentation showHint:(BOOL)showHint{
+    _maskPattern = maskPattern;
+    _isHintShowable = showHint;
+    _maskRepresentation = maskRepresentation;
+    _mutablePattern = [[NSMutableArray alloc]init];
+    for (NSInteger i=0; i<= [_maskPattern length]-1; i++) {
+        [_mutablePattern addObject:[_maskPattern substringWithRange:NSMakeRange(i, 1)]];
+    }
+}
+
+-(int)nextAvailablePositionForMaskWith:(NSString*)text{
+    int position = 0;
+    for (NSUInteger index = 0; index < [text length]; index++) {
+        position = (int)index;
+        NSString * character = [text substringWithRange:NSMakeRange(index, 1)];
+        if ([character isEqualToString:@" "]){
+            break;
+        }
+    }
+    return position;
+}
+
+-(NSMutableArray*)rawTextForMaskWith:(NSString*)text{
+    NSMutableArray* mutableText = [[NSMutableArray alloc] init];
+    for (NSUInteger index = 0; index < [text length]; index++) {
+        NSString * character = [text substringWithRange:NSMakeRange(index, 1)];
+        if([character intValue] || [character isEqualToString:@"0"]){
+            [mutableText addObject:character];
+        }
+    }
+    return mutableText;
+}
+
+-(NSString*)maskCheck:(NSString*)text{
+    
+    NSMutableString* maskPatternCopy = [NSMutableString stringWithString:_maskPattern.copy];
+    NSMutableArray* mutableText = [self rawTextForMaskWith:text];
+    
+    for (NSUInteger index = 0; index < [_mutablePattern count]; index++) {
+        NSString* character = [_mutablePattern objectAtIndex:index];
+        if ([character isEqualToString:_maskRepresentation]){
+            if ([mutableText count] > 0){
+                [maskPatternCopy replaceCharactersInRange:NSMakeRange(index, 1) withString:[mutableText objectAtIndex:0]];
+                [mutableText removeObjectAtIndex:0];
+            }else{
+                break;
+            }
+        }
+    }
+    return [maskPatternCopy stringByReplacingOccurrencesOfString:_maskRepresentation withString:@" "];
+}
+
+-(BOOL)isMaskAvailable{
+    return ([_maskPattern length] > 0 && [_maskRepresentation length] > 0);
 }
 
 @end

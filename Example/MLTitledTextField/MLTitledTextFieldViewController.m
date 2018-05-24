@@ -16,6 +16,7 @@
 @property (weak, nonatomic) IBOutlet MLTitledSingleLineTextField *textField1;
 @property (weak, nonatomic) IBOutlet MLTitledSingleLineTextField *textField2;
 @property (weak, nonatomic) IBOutlet MLTitledSingleLineTextField *textFieldAlignCenter;
+@property (weak, nonatomic) IBOutlet MLTitledSingleLineTextField *textfieldMask;
 @property (weak, nonatomic) IBOutlet UIScrollView *scrollView;
 @property (weak, nonatomic) UIView *activeTextField;
 
@@ -40,6 +41,8 @@
 	self.textField2.textInputControl.keyboardType = UIKeyboardTypeNumberPad;
 	[self.textFieldAlignCenter setupInnerTextWithAlignment:NSTextAlignmentCenter];
 	self.textFieldAlignCenter.helperDescription = @"Helper Description Centered";
+    [self.textfieldMask setMaskPattern:@"##/##/####" maskRepresentation:@"#" showHint:YES];
+    self.textfieldMask.keyboardType = UIKeyboardTypeNumberPad;
 }
 
 #pragma mark - Memory

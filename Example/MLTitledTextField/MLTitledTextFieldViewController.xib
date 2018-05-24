@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="13770" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" colorMatched="YES">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="14109" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" colorMatched="YES">
     <device id="retina4_7" orientation="portrait">
         <adaptation id="fullscreen"/>
     </device>
     <dependencies>
         <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="13770"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="14088"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <objects>
@@ -15,6 +15,7 @@
                 <outlet property="textField1" destination="ZcJ-1b-FDZ" id="SrX-WZ-08g"/>
                 <outlet property="textField2" destination="cCH-L2-bld" id="qzR-tS-7fV"/>
                 <outlet property="textFieldAlignCenter" destination="0Ay-BT-CLQ" id="AWB-ja-cnf"/>
+                <outlet property="textfieldMask" destination="OB2-4y-0PS" id="dXx-uM-axu"/>
                 <outlet property="view" destination="i5M-Pr-FkT" id="sfx-zR-JGt"/>
             </connections>
         </placeholder>
@@ -146,6 +147,19 @@
                                 <outlet property="delegate" destination="-1" id="sUG-JQ-vx3"/>
                             </connections>
                         </view>
+                        <view contentMode="scaleToFill" placeholderIntrinsicWidth="infinite" placeholderIntrinsicHeight="76" translatesAutoresizingMaskIntoConstraints="NO" id="OB2-4y-0PS" userLabel="Text Field Mask" customClass="MLTitledSingleLineTextField">
+                            <rect key="frame" x="8" y="972" width="351" height="76"/>
+                            <userDefinedRuntimeAttributes>
+                                <userDefinedRuntimeAttribute type="string" keyPath="title" value="Fecha de nacimiento"/>
+                                <userDefinedRuntimeAttribute type="number" keyPath="maxCharacters">
+                                    <integer key="value" value="60"/>
+                                </userDefinedRuntimeAttribute>
+                                <userDefinedRuntimeAttribute type="string" keyPath="placeholder" value="DD/MM/AAAA"/>
+                            </userDefinedRuntimeAttributes>
+                            <connections>
+                                <outlet property="delegate" destination="-1" id="BRy-xj-Nme"/>
+                            </connections>
+                        </view>
                         <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="ha4-pu-GFt">
                             <rect key="frame" x="264" y="53" width="142" height="30"/>
                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
@@ -177,11 +191,12 @@
                         <constraint firstItem="zjG-Ig-vo1" firstAttribute="trailing" secondItem="hNH-d0-dSL" secondAttribute="trailing" id="Dr8-ce-RWp"/>
                         <constraint firstItem="cCH-L2-bld" firstAttribute="leading" secondItem="ZcJ-1b-FDZ" secondAttribute="leading" id="FSw-cw-01q"/>
                         <constraint firstItem="cCH-L2-bld" firstAttribute="top" secondItem="ZcJ-1b-FDZ" secondAttribute="bottom" constant="42" id="Gyk-8H-yGi"/>
+                        <constraint firstItem="OB2-4y-0PS" firstAttribute="trailing" secondItem="0Ay-BT-CLQ" secondAttribute="trailing" id="J3R-SZ-bRx"/>
                         <constraint firstItem="sJe-NM-Qp1" firstAttribute="top" secondItem="EF5-Vh-BMO" secondAttribute="bottom" constant="42" id="Kws-od-Ybn"/>
+                        <constraint firstAttribute="bottom" secondItem="OB2-4y-0PS" secondAttribute="bottom" constant="40" id="LUo-3k-c8t"/>
                         <constraint firstAttribute="trailing" secondItem="ZcJ-1b-FDZ" secondAttribute="trailing" id="QDl-Sr-kai"/>
                         <constraint firstItem="sJe-NM-Qp1" firstAttribute="leading" secondItem="EF5-Vh-BMO" secondAttribute="leading" id="RK0-4J-uP9"/>
                         <constraint firstItem="ZcJ-1b-FDZ" firstAttribute="top" secondItem="P2o-1J-LLS" secondAttribute="top" constant="30" id="RNJ-G5-llC"/>
-                        <constraint firstAttribute="bottom" secondItem="0Ay-BT-CLQ" secondAttribute="bottom" constant="40" id="TTD-sT-rVA"/>
                         <constraint firstItem="zjG-Ig-vo1" firstAttribute="top" secondItem="hNH-d0-dSL" secondAttribute="bottom" constant="42" id="Uh6-49-En1"/>
                         <constraint firstItem="EF5-Vh-BMO" firstAttribute="leading" secondItem="cCH-L2-bld" secondAttribute="leading" id="Utb-1R-YaT"/>
                         <constraint firstItem="hNH-d0-dSL" firstAttribute="trailing" secondItem="sJe-NM-Qp1" secondAttribute="trailing" id="X3N-Tc-IBZ"/>
@@ -190,7 +205,9 @@
                         <constraint firstItem="6Nt-hV-kZC" firstAttribute="top" secondItem="ZcJ-1b-FDZ" secondAttribute="bottom" constant="8" id="dqc-fM-4sf"/>
                         <constraint firstItem="cCH-L2-bld" firstAttribute="trailing" secondItem="ZcJ-1b-FDZ" secondAttribute="trailing" id="f4x-yK-Avq"/>
                         <constraint firstItem="sJe-NM-Qp1" firstAttribute="trailing" secondItem="EF5-Vh-BMO" secondAttribute="trailing" id="h4M-XF-jC1"/>
+                        <constraint firstItem="OB2-4y-0PS" firstAttribute="leading" secondItem="0Ay-BT-CLQ" secondAttribute="leading" id="nB6-76-0Rv"/>
                         <constraint firstItem="6Nt-hV-kZC" firstAttribute="leading" secondItem="P2o-1J-LLS" secondAttribute="leading" constant="34" id="nLo-PA-s6h"/>
+                        <constraint firstItem="OB2-4y-0PS" firstAttribute="top" secondItem="0Ay-BT-CLQ" secondAttribute="bottom" constant="40" id="nRc-R7-t1m"/>
                         <constraint firstItem="hNH-d0-dSL" firstAttribute="top" secondItem="sJe-NM-Qp1" secondAttribute="bottom" constant="42" id="ome-bY-dDP"/>
                         <constraint firstItem="wu0-NA-T0p" firstAttribute="leading" secondItem="6Nt-hV-kZC" secondAttribute="trailing" constant="37" id="wEs-3H-Em8"/>
                         <constraint firstItem="sHA-iF-t0h" firstAttribute="trailing" secondItem="zjG-Ig-vo1" secondAttribute="trailing" id="yTA-Gj-MYL"/>

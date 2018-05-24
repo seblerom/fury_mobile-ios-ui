@@ -154,6 +154,14 @@ typedef NS_ENUM (NSInteger, MLTitledTextFieldState) {
 - (void)setupInnerTextWithAlignment:(NSTextAlignment)textAlignment;
 
 /**
+ * Use this method to specify the mask pattern to be used in while typing
+ * maskPattern e.g: ##/##/#### for a date
+ * maskRepresentation e.g: #
+ * showHint e.g:  /  /
+ */
+-(void)setMaskPattern:(NSString*)maskPattern maskRepresentation:(NSString*)maskRepresentation showHint:(BOOL)showHint;
+
+/**
  * Applies the fonts and colors to the controls of this components.
  * You should not call this method directly, but subclasses may reimplement it for custom styling.
  */
