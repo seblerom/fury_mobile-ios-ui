@@ -564,17 +564,26 @@ NSString* const kEmpty = @"";
         }
         return [maskPatternCopy stringByReplacingOccurrencesOfString:_maskRepresentation withString:kSpace];
     }else{
-        NSString* character = [textfield.text substringWithRange:NSMakeRange([textfield.text length]-1, 1)];
-        if (![character intValue]){
+        int numericPos = [self numericPosition:textfield.text];
+        NSString* character = [textfield.text substringWithRange:NSMakeRange(numericPos, 1)];
+        if (![character intValue] && ![character isEqualToString:kZero]){
             NSLog(@"Character: %@",character);
-            UITextRange* selectedTextRange = textfield.selectedTextRange;
-            NSLog(@"%@", selectedTextRange);
-            return @"";
+            return [textfield.text stringByReplacingCharactersInRange:NSMakeRange(numericPos -1, 1) withString:kSpace];
         }
-        return [textfield.text stringByReplacingCharactersInRange:NSMakeRange([textfield.text length]-1, 1) withString:kSpace];
+        return [textfield.text stringByReplacingCharactersInRange:NSMakeRange(numericPos, 1) withString:kSpace];
     }
+}
+
+-(int)numericPosition:(NSString*)text{
     
-    
+    int position = 0;
+    for (NSUInteger index = 0; index < [text length]; index++) {
+        if ([[text substringWithRange:NSMakeRange(index, 1)] isEqualToString:kSpace]){
+            break;
+        }
+        position = (int)index;
+    }
+    return position;
 }
 
 -(BOOL)isMaskAvailable{
