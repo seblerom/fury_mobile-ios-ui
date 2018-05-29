@@ -34,7 +34,8 @@ NSString* const kEmpty = @"";
 @property (nonatomic, readwrite) BOOL isHintShowable;
 @property (nonatomic, readwrite) NSMutableArray *mutablePattern;
 @property (nonatomic, readwrite) NSString* maskApplied;
-@property (strong, nonatomic) UITextRange* cursorPosition;
+@property (nonatomic, readwrite) NSString* lastCharacterTyped;
+@property (nonatomic) int cursorPosition;
 @end
 
 @implementation MLTitledSingleLineTextField
@@ -128,23 +129,23 @@ NSString* const kEmpty = @"";
     CGFloat lineHeight = kMLTextFieldThinLine;
     
     switch (self.state) {
-            case MLTitledTextFieldStateDisabled: {
-                textColor = MLStyleSheetManager.styleSheet.midGreyColor;
-                labelColor = MLStyleSheetManager.styleSheet.midGreyColor;
-                break;
-            }
+        case MLTitledTextFieldStateDisabled: {
+            textColor = MLStyleSheetManager.styleSheet.midGreyColor;
+            labelColor = MLStyleSheetManager.styleSheet.midGreyColor;
+            break;
+        }
             
-            case MLTitledTextFieldStateEditing: {
-                lineColor = MLStyleSheetManager.styleSheet.secondaryColor;
-                lineHeight = kMLTextFieldThickLine;
-                break;
-            }
+        case MLTitledTextFieldStateEditing: {
+            lineColor = MLStyleSheetManager.styleSheet.secondaryColor;
+            lineHeight = kMLTextFieldThickLine;
+            break;
+        }
             
-            case MLTitledTextFieldStateError: {
-                lineColor = accessoryLabelColor = MLStyleSheetManager.styleSheet.errorColor;
-                lineHeight = kMLTextFieldThickLine;
-                break;
-            }
+        case MLTitledTextFieldStateError: {
+            lineColor = accessoryLabelColor = MLStyleSheetManager.styleSheet.errorColor;
+            lineHeight = kMLTextFieldThickLine;
+            break;
+        }
             
         default: {
             lineColor = MLStyleSheetManager.styleSheet.midGreyColor;
@@ -373,11 +374,8 @@ NSString* const kEmpty = @"";
 {
     self.textCache = textField.text;
     if ([self isMaskAvailable]){
-        UITextPosition * originalStart = textField.beginningOfDocument;
-        int offset = [self nextAvailablePositionForMaskWith:self.maskApplied];
-        UITextPosition* newPosition = [textField positionFromPosition:originalStart offset:offset];
         textField.text = self.maskApplied;
-        textField.selectedTextRange = [textField textRangeFromPosition:newPosition toPosition:newPosition];
+        [self newCursorPositionFor:textField withOffset:[self nextCursorPositionFrom:self.cursorPosition]];
     }
     [self sendActionsForControlEvents:UIControlEventEditingChanged];
 }
@@ -405,6 +403,8 @@ NSString* const kEmpty = @"";
     BOOL shouldChange = YES;
     
     if ([self isMaskAvailable]){
+        self.lastCharacterTyped = string;
+        self.cursorPosition = [self currentCursorPosition:textField];
         self.maskApplied = [self maskCheckWith:textField andLastCharacterTyped:string];
     }
     
@@ -515,67 +515,96 @@ NSString* const kEmpty = @"";
     }
 }
 
--(int)nextAvailablePositionForMaskWith:(NSString*)text{
-    int position = 0;
-    for (NSUInteger index = 0; index < [text length]; index++) {
-        NSString * character = [text substringWithRange:NSMakeRange(index, 1)];
-        if ([character isEqualToString:kSpace]){
-            break;
-        }
-        position = (int)index+1;
-    }
-    return position;
-}
-
 -(NSMutableArray*)rawTextForMaskWith:(NSString*)text{
-    NSMutableArray* mutableText = [[NSMutableArray alloc] init];
+    NSMutableArray * mutablePatternCopy = _mutablePattern.mutableCopy;
     for (NSUInteger index = 0; index < [text length]; index++) {
         NSString * character = [text substringWithRange:NSMakeRange(index, 1)];
-        if([character intValue] || [character isEqualToString:kZero]){
-            [mutableText addObject:character];
+        if([self isNumber:character]){
+            if ([[mutablePatternCopy objectAtIndex:index] isEqualToString:_maskRepresentation]){
+                [mutablePatternCopy replaceObjectAtIndex:index withObject:character];
+            }else{
+                [mutablePatternCopy replaceObjectAtIndex:index + 1 withObject:character];
+            }
         }
     }
-    return mutableText;
+    return mutablePatternCopy;
 }
 
--(UITextRange*)retrieveCursorPosition:(UITextField*)textField andTextToShow:(NSString*)textToShow{
-    UITextPosition * originalStart = textField.beginningOfDocument;
-    int offset = [self nextAvailablePositionForMaskWith:textToShow];
-    UITextPosition* newPosition = [textField positionFromPosition:originalStart offset:offset];
-    return [textField textRangeFromPosition:newPosition toPosition:newPosition];
+-(int)currentCursorPosition:(UITextField*)textField{
+    UITextRange * selectedTextRange = textField.selectedTextRange;
+    int cursorPosition = (int)[textField offsetFromPosition:textField.beginningOfDocument toPosition:selectedTextRange.start];
+    return cursorPosition;
+}
+
+-(int)nextCursorPositionFrom:(int)currentOffset{
+    int offset = currentOffset;
+    if (![self.lastCharacterTyped isEqualToString:kEmpty]){
+        if ([self.textField.text length] > offset){
+            NSString * character = [self.textField.text substringWithRange:NSMakeRange(offset, 1)];
+            if (![self isNumber:character] && ![character isEqualToString:kSpace]) {
+                offset += 1;
+            }
+            offset += 1;
+        }
+    }else{
+        if (offset-1 > 0) {
+            NSString * character = [self.textField.text substringWithRange:NSMakeRange(offset-1, 1)];
+            if(![self isNumber:character] && ![character isEqualToString:kSpace]){
+                offset -= 1;
+            }
+            offset -= 1;
+        }
+    }
+    return offset;
+}
+
+-(void)newCursorPositionFor:(UITextField*)textField withOffset:(int)offset{
+    UITextPosition* newPosition = [textField positionFromPosition:textField.beginningOfDocument offset:offset];
+    textField.selectedTextRange = [textField textRangeFromPosition:newPosition toPosition:newPosition];
+}
+
+-(NSString*)arrayToString:(NSMutableArray*)array{
+    
+    NSMutableArray* mutableArray = array.mutableCopy;
+    if ([mutableArray count] > [_maskPattern length]){
+        [mutableArray removeLastObject];
+    }
+    
+    NSMutableString* returnText = [[NSMutableString alloc] initWithString:@""];
+    for (NSString* character in mutableArray) {
+        [returnText appendString:character];
+    }
+    return returnText;
 }
 
 -(NSString*)maskCheckWith:(UITextField *)textfield andLastCharacterTyped:(NSString*)lastCharacterTyped{
     
     if (![lastCharacterTyped isEqualToString:kEmpty]){
-        NSMutableString* maskPatternCopy = [NSMutableString stringWithString:_maskPattern.copy];
-        NSMutableArray* mutableText = [self rawTextForMaskWith:[textfield.text stringByAppendingString:lastCharacterTyped]];
-        
-        for (NSUInteger index = 0; index < [_mutablePattern count]; index++) {
-            NSString* character = [_mutablePattern objectAtIndex:index];
-            if ([character isEqualToString:_maskRepresentation]){
-                if ([mutableText count] > 0){
-                    [maskPatternCopy replaceCharactersInRange:NSMakeRange(index, 1) withString:[mutableText objectAtIndex:0]];
-                    [mutableText removeObjectAtIndex:0];
-                }else{
-                    break;
-                }
+        NSMutableArray* mutableText = [[self rawTextForMaskWith:textfield.text] mutableCopy];
+        if ([mutableText count] > self.cursorPosition){
+            NSString * character = [mutableText objectAtIndex:self.cursorPosition];
+            if([character isEqualToString:_maskRepresentation] || [self isNumber:character]){
+                [mutableText insertObject:lastCharacterTyped atIndex:self.cursorPosition];
+            }else{
+                [mutableText insertObject:lastCharacterTyped atIndex:self.cursorPosition + 1];
             }
+            mutableText = [self rawTextForMaskWith:[self arrayToString:mutableText]];
         }
-        return [maskPatternCopy stringByReplacingOccurrencesOfString:_maskRepresentation withString:kSpace];
+        return [[self arrayToString:mutableText] stringByReplacingOccurrencesOfString:_maskRepresentation withString:kSpace];
     }else{
-        int numericPos = [self numericPosition:textfield.text];
-        NSString* character = [textfield.text substringWithRange:NSMakeRange(numericPos, 1)];
-        if (![character intValue] && ![character isEqualToString:kZero]){
-            NSLog(@"Character: %@",character);
-            return [textfield.text stringByReplacingCharactersInRange:NSMakeRange(numericPos -1, 1) withString:kSpace];
+        NSString* character = [textfield.text substringWithRange:NSMakeRange([self lastNumericPositionFromText:textfield.text], 1)];
+        if (![self isNumber:character]){
+            return [textfield.text stringByReplacingCharactersInRange:NSMakeRange([self lastNumericPositionFromText:textfield.text] -1, 1) withString:kSpace];
         }
-        return [textfield.text stringByReplacingCharactersInRange:NSMakeRange(numericPos, 1) withString:kSpace];
+        NSString * stringToShow = [textfield.text stringByReplacingCharactersInRange:NSMakeRange([self lastNumericPositionFromText:textfield.text], 1) withString:kSpace];
+        if ([stringToShow rangeOfCharacterFromSet:[NSCharacterSet decimalDigitCharacterSet]].location == NSNotFound) {
+            return @"";
+        }
+        return stringToShow;
     }
 }
 
--(int)numericPosition:(NSString*)text{
-    
+-(int)lastNumericPositionFromText:(NSString*)text{
     int position = 0;
     for (NSUInteger index = 0; index < [text length]; index++) {
         if ([[text substringWithRange:NSMakeRange(index, 1)] isEqualToString:kSpace]){
@@ -588,6 +617,13 @@ NSString* const kEmpty = @"";
 
 -(BOOL)isMaskAvailable{
     return ([_maskPattern length] > 0 && [_maskRepresentation length] > 0);
+}
+
+-(BOOL)isNumber:(NSString*)text{
+    if ([text intValue] || [text isEqualToString:kZero]){
+        return true;
+    }
+    return false;
 }
 
 @end
