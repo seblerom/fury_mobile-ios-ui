@@ -30,8 +30,6 @@ static const CGFloat kMLTextFieldThickLine = 2;
 @property (nonatomic, readwrite) NSString *maskPattern;
 @property (nonatomic, readwrite) NSString *maskRepresentation;
 @property (nonatomic, strong) MLTextMask* maskInstance;
-@property (nonatomic, readwrite) NSRange currentRange;
-@property (nonatomic, readwrite) NSString* maskApplied;
 @end
 
 @implementation MLTitledSingleLineTextField
