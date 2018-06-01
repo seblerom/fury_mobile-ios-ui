@@ -42,9 +42,9 @@
 	self.textField2.textInputControl.keyboardType = UIKeyboardTypeNumberPad;
 	[self.textFieldAlignCenter setupInnerTextWithAlignment:NSTextAlignmentCenter];
 	self.textFieldAlignCenter.helperDescription = @"Helper Description Centered";
-    [self.textfieldMask setMaskPattern:@"##/##/####" maskRepresentation:@"#" showHint:YES];
+    [self.textfieldMask setMaskPattern:@"##/##/####" maskRepresentation:@"#"];
     self.textfieldMask.keyboardType = UIKeyboardTypeNumberPad;
-    [self.textfieldMaskDni setMaskPattern:@"##-########-#" maskRepresentation:@"#" showHint:YES];
+    [self.textfieldMaskDni setMaskPattern:@"##-########-#" maskRepresentation:@"#"];
     self.textfieldMaskDni.keyboardType = UIKeyboardTypeNumberPad;
 }
 

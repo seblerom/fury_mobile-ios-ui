@@ -11,12 +11,10 @@
 #import "MLUIBundle.h"
 #import "MLStyleSheetManager.h"
 #import "MLTitledSingleLineStringProvider.h"
+#import "MLTextMask.h"
 
 static const CGFloat kMLTextFieldThinLine = 1;
 static const CGFloat kMLTextFieldThickLine = 2;
-NSString* const kSpace = @" ";
-NSString* const kZero = @"0";
-NSString* const kEmpty = @"";
 
 @interface MLTitledSingleLineTextField () <UITextFieldDelegate>
 @property (weak, nonatomic) IBOutlet UILabel *titleLabel;
@@ -31,11 +29,9 @@ NSString* const kEmpty = @"";
 #pragma mark Mask variables
 @property (nonatomic, readwrite) NSString *maskPattern;
 @property (nonatomic, readwrite) NSString *maskRepresentation;
-@property (nonatomic, readwrite) BOOL isHintShowable;
-@property (nonatomic, readwrite) NSMutableArray *mutablePattern;
+@property (nonatomic, strong) MLTextMask* maskInstance;
+@property (nonatomic, readwrite) NSRange currentRange;
 @property (nonatomic, readwrite) NSString* maskApplied;
-@property (nonatomic, readwrite) NSString* lastCharacterTyped;
-@property (nonatomic) int cursorPosition;
 @end
 
 @implementation MLTitledSingleLineTextField
@@ -374,8 +370,9 @@ NSString* const kEmpty = @"";
 {
     self.textCache = textField.text;
     if ([self isMaskAvailable]){
-        textField.text = self.maskApplied;
-        [self newCursorPositionFor:textField withOffset:[self nextCursorPositionFrom:self.cursorPosition]];
+        [_maskInstance setCurrentCursorPosition:textField];
+        textField.text = [_maskInstance applyMaskToTextfield:textField.text];
+        [self newCursorPositionFor:textField withOffset:[_maskInstance offSetForCursorPosition]];
     }
     [self sendActionsForControlEvents:UIControlEventEditingChanged];
 }
@@ -401,12 +398,6 @@ NSString* const kEmpty = @"";
 - (BOOL)textField:(UITextField *)textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string
 {
     BOOL shouldChange = YES;
-    
-    if ([self isMaskAvailable]){
-        self.lastCharacterTyped = string;
-        self.cursorPosition = [self currentCursorPosition:textField];
-        self.maskApplied = [self maskCheckWith:textField andLastCharacterTyped:string];
-    }
     
     NSString *finalString = [textField.text stringByReplacingCharactersInRange:range withString:string];
     
@@ -505,125 +496,23 @@ NSString* const kEmpty = @"";
 }
 
 #pragma mark Mask
--(void)setMaskPattern:(NSString *)maskPattern maskRepresentation:(NSString *)maskRepresentation showHint:(BOOL)showHint{
+-(void)setMaskPattern:(NSString *)maskPattern maskRepresentation:(NSString *)maskRepresentation{
     _maskPattern = maskPattern;
-    _isHintShowable = showHint;
     _maskRepresentation = maskRepresentation;
-    _mutablePattern = [[NSMutableArray alloc]init];
-    for (NSInteger i=0; i<= [_maskPattern length]-1; i++) {
-        [_mutablePattern addObject:[_maskPattern substringWithRange:NSMakeRange(i, 1)]];
-    }
+    _maskInstance = [self getMaskInstance];
 }
 
--(NSMutableArray*)rawTextForMaskWith:(NSString*)text{
-    NSMutableArray * mutablePatternCopy = _mutablePattern.mutableCopy;
-    for (NSUInteger index = 0; index < [text length]; index++) {
-        NSString * character = [text substringWithRange:NSMakeRange(index, 1)];
-        if([self isNumber:character]){
-            if ([[mutablePatternCopy objectAtIndex:index] isEqualToString:_maskRepresentation]){
-                [mutablePatternCopy replaceObjectAtIndex:index withObject:character];
-            }else{
-                [mutablePatternCopy replaceObjectAtIndex:index + 1 withObject:character];
-            }
-        }
-    }
-    return mutablePatternCopy;
-}
-
--(int)currentCursorPosition:(UITextField*)textField{
-    UITextRange * selectedTextRange = textField.selectedTextRange;
-    int cursorPosition = (int)[textField offsetFromPosition:textField.beginningOfDocument toPosition:selectedTextRange.start];
-    return cursorPosition;
-}
-
--(int)nextCursorPositionFrom:(int)currentOffset{
-    int offset = currentOffset;
-    if (![self.lastCharacterTyped isEqualToString:kEmpty]){
-        if ([self.textField.text length] > offset){
-            NSString * character = [self.textField.text substringWithRange:NSMakeRange(offset, 1)];
-            if (![self isNumber:character] && ![character isEqualToString:kSpace]) {
-                offset += 1;
-            }
-            offset += 1;
-        }
-    }else{
-        if (offset-1 > 0) {
-            NSString * character = [self.textField.text substringWithRange:NSMakeRange(offset-1, 1)];
-            if(![self isNumber:character] && ![character isEqualToString:kSpace]){
-                offset -= 1;
-            }
-            offset -= 1;
-        }
-    }
-    return offset;
-}
-
--(void)newCursorPositionFor:(UITextField*)textField withOffset:(int)offset{
-    UITextPosition* newPosition = [textField positionFromPosition:textField.beginningOfDocument offset:offset];
-    textField.selectedTextRange = [textField textRangeFromPosition:newPosition toPosition:newPosition];
-}
-
--(NSString*)arrayToString:(NSMutableArray*)array{
-    
-    NSMutableArray* mutableArray = array.mutableCopy;
-    if ([mutableArray count] > [_maskPattern length]){
-        [mutableArray removeLastObject];
-    }
-    
-    NSMutableString* returnText = [[NSMutableString alloc] initWithString:@""];
-    for (NSString* character in mutableArray) {
-        [returnText appendString:character];
-    }
-    return returnText;
-}
-
--(NSString*)maskCheckWith:(UITextField *)textfield andLastCharacterTyped:(NSString*)lastCharacterTyped{
-    
-    if (![lastCharacterTyped isEqualToString:kEmpty]){
-        NSMutableArray* mutableText = [[self rawTextForMaskWith:textfield.text] mutableCopy];
-        if ([mutableText count] > self.cursorPosition){
-            NSString * character = [mutableText objectAtIndex:self.cursorPosition];
-            if([character isEqualToString:_maskRepresentation] || [self isNumber:character]){
-                [mutableText insertObject:lastCharacterTyped atIndex:self.cursorPosition];
-            }else{
-                [mutableText insertObject:lastCharacterTyped atIndex:self.cursorPosition + 1];
-            }
-            mutableText = [self rawTextForMaskWith:[self arrayToString:mutableText]];
-        }
-        return [[self arrayToString:mutableText] stringByReplacingOccurrencesOfString:_maskRepresentation withString:kSpace];
-    }else{
-        NSString* character = [textfield.text substringWithRange:NSMakeRange([self lastNumericPositionFromText:textfield.text], 1)];
-        if (![self isNumber:character]){
-            return [textfield.text stringByReplacingCharactersInRange:NSMakeRange([self lastNumericPositionFromText:textfield.text] -1, 1) withString:kSpace];
-        }
-        NSString * stringToShow = [textfield.text stringByReplacingCharactersInRange:NSMakeRange([self lastNumericPositionFromText:textfield.text], 1) withString:kSpace];
-        if ([stringToShow rangeOfCharacterFromSet:[NSCharacterSet decimalDigitCharacterSet]].location == NSNotFound) {
-            return @"";
-        }
-        return stringToShow;
-    }
-}
-
--(int)lastNumericPositionFromText:(NSString*)text{
-    int position = 0;
-    for (NSUInteger index = 0; index < [text length]; index++) {
-        if ([[text substringWithRange:NSMakeRange(index, 1)] isEqualToString:kSpace]){
-            break;
-        }
-        position = (int)index;
-    }
-    return position;
+-(MLTextMask*)getMaskInstance{
+    return [[MLTextMask alloc]initWithPattern:_maskPattern andPatternRepresentation:_maskRepresentation];
 }
 
 -(BOOL)isMaskAvailable{
     return ([_maskPattern length] > 0 && [_maskRepresentation length] > 0);
 }
 
--(BOOL)isNumber:(NSString*)text{
-    if ([text intValue] || [text isEqualToString:kZero]){
-        return true;
-    }
-    return false;
+-(void)newCursorPositionFor:(UITextField*)textField withOffset:(int)offset{
+    UITextPosition* newPosition = [textField positionFromPosition:textField.beginningOfDocument offset:offset];
+    textField.selectedTextRange = [textField textRangeFromPosition:newPosition toPosition:newPosition];
 }
 
 @end

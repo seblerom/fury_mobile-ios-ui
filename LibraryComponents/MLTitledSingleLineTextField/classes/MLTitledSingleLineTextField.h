@@ -159,7 +159,7 @@ typedef NS_ENUM (NSInteger, MLTitledTextFieldState) {
  * maskRepresentation e.g: #
  * showHint e.g:  /  /
  */
--(void)setMaskPattern:(NSString*)maskPattern maskRepresentation:(NSString*)maskRepresentation showHint:(BOOL)showHint;
+-(void)setMaskPattern:(NSString*)maskPattern maskRepresentation:(NSString*)maskRepresentation;
 
 /**
  * Applies the fonts and colors to the controls of this components.
