@@ -13,4 +13,5 @@
 - (NSString*)applyMaskToTextfield:(NSString*)text;
 -(int)offSetForCursorPosition;
 -(void)setCurrentCursorPosition:(UITextField*)textField;
+-(void)saveLastCharacterTyped:(NSString *)lastCharacterTyped;
 @end

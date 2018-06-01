@@ -31,21 +31,20 @@ NSString* const kEmpty = @"";
     return self;
 }
 
+-(void)saveLastCharacterTyped:(NSString *)lastCharacterTyped{
+    self.lastCharacterTyped = lastCharacterTyped;
+}
+
 - (NSString*)applyMaskToTextfield:(NSString*)text{
     
     _rawText = [self rawText:text];
-    NSMutableArray * formatTextAsArray = [self stringToArrayWithPatternFormat:_rawText];
-    _finalText = [[self arrayToString:formatTextAsArray] stringByReplacingOccurrencesOfString:_maskRepresentation withString:kSpace];
-//    if ([textfield.text isEqualToString:kEmpty] && string != kEmpty) {
-//        NSMutableArray * formatTextAsArray = [self stringToArrayWithPatternFormat:[textfield.text stringByReplacingCharactersInRange:range withString:string]];
-//        _finalText = [[self arrayToString:formatTextAsArray] stringByReplacingOccurrencesOfString:_maskRepresentation withString:kSpace];
-//    }else{
-//        if ([self isNumber:[textfield.text substringWithRange:range]] || [[textfield.text substringWithRange:range] isEqualToString:kSpace]) {
-//            NSMutableArray * formatTextAsArray = [self stringToArrayWithPatternFormat:[textfield.text stringByReplacingCharactersInRange:range withString:string]];
-//            _finalText = [[self arrayToString:formatTextAsArray] stringByReplacingOccurrencesOfString:_maskRepresentation withString:kSpace];
-//        }
-//    }
-    
+    if (![_rawText isEqualToString:kEmpty]) {
+        NSMutableArray * formatTextAsArray = [self stringToArrayWithPatternFormat:_rawText];
+        _finalText = [[self arrayToString:formatTextAsArray] stringByReplacingOccurrencesOfString:_maskRepresentation withString:kSpace];
+
+    }else{
+        _finalText = @"";
+    }
     
     return _finalText;
 }
@@ -69,7 +68,7 @@ NSString* const kEmpty = @"";
 -(int)offSetForCursorPosition{
     int offset = 0;
     if ([_lastCharacterTyped isEqualToString:kEmpty]){
-        offset = [self searchPreviousCharacterFromStartingPoint:_cursorPosition];
+        offset = _cursorPosition;
     }else{
         offset = [self searchNextCharacterFromStartingPoint:_cursorPosition];
     }
@@ -78,26 +77,13 @@ NSString* const kEmpty = @"";
 
 -(int)searchNextCharacterFromStartingPoint:(int)startingPoint{
     int nextPosition = startingPoint;
-    for (int index = startingPoint; index < [_finalText length]; index++) {
-        NSString * character = [_finalText substringWithRange:NSMakeRange(index, 1)];
-        if ([character isEqualToString:kSpace]) {
-            break;
-        }else{
+    if (startingPoint < [_finalText length]) {
+        NSString * character = [_finalText substringWithRange:NSMakeRange(startingPoint, 1)];
+        if (![character isEqualToString:kSpace] && ![character isEqualToString:_maskRepresentation] && ![self isNumber:character]) {
             nextPosition += 1;
         }
-    }
-    return nextPosition;
-}
-
--(int)searchPreviousCharacterFromStartingPoint:(int)startingPoint{
-    int nextPosition = startingPoint;
-    for (int index = startingPoint; index > 0; index--) {
-        NSString * character = [_finalText substringWithRange:NSMakeRange(index, 1)];
-        if ([character isEqualToString:kSpace] || [self isNumber:character]) {
-            break;
-        }else{
-            nextPosition -= 1;
-        }
+    }else{
+        nextPosition = (int)[_finalText length];
     }
     return nextPosition;
 }
@@ -124,11 +110,13 @@ NSString* const kEmpty = @"";
 -(NSMutableArray*)stringToArrayWithPatternFormat:(NSString*)text{
     NSMutableArray * mutablePatternCopy = _mutablePattern.mutableCopy;
     for (NSUInteger index = 0; index < [mutablePatternCopy count]; index++) {
-        if ([self isNumber:[mutablePatternCopy objectAtIndex:index]] || [[mutablePatternCopy objectAtIndex:index]isEqualToString:_maskRepresentation] ) {
-            NSString* character = [self getCharacterFromRawText];
-            if ([self isNumber:character]) {
-                [mutablePatternCopy replaceObjectAtIndex:index withObject:character];
+        if ([[mutablePatternCopy objectAtIndex:index] isEqualToString:_maskRepresentation]){
+            NSString* rawCharacter = [self getCharacterFromRawText];
+            if (![rawCharacter isEqualToString:kEmpty]) {
+                [mutablePatternCopy replaceObjectAtIndex:index withObject:rawCharacter];
                 [self deleteLastCharacterPoped];
+            }else{
+                break;
             }
         }
     }

@@ -398,7 +398,7 @@ static const CGFloat kMLTextFieldThickLine = 2;
 - (BOOL)textField:(UITextField *)textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string
 {
     BOOL shouldChange = YES;
-    
+    [_maskInstance saveLastCharacterTyped:string];
     NSString *finalString = [textField.text stringByReplacingCharactersInRange:range withString:string];
     
     if (![self validateLength:finalString]) {
