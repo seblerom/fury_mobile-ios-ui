@@ -63,11 +63,12 @@ NSString* const kEmpty = @"";
 -(int)offSetForCursorPosition{
     int offset = 0;
     if ([_lastCharacterTyped isEqualToString:kEmpty]){
-        if (_cursorPosition == 0) {
-            offset = [self nextCursorPosition];
-        }else{
-            offset = _cursorPosition;
-        }
+        offset = _cursorPosition;
+//        if (_cursorPosition == 0) {
+//            offset = [self nextCursorPosition];
+//        }else{
+//            offset = _cursorPosition;
+//        }
     }else{
         offset = [self searchNextCharacterFromStartingPoint:_cursorPosition];
     }

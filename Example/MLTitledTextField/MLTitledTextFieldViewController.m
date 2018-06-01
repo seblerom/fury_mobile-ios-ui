@@ -44,7 +44,7 @@
 	self.textFieldAlignCenter.helperDescription = @"Helper Description Centered";
     [self.textfieldMask setMaskPattern:@"##/##/####" maskRepresentation:@"#"];
     self.textfieldMask.keyboardType = UIKeyboardTypeNumberPad;
-    [self.textfieldMaskDni setMaskPattern:@"##-########-#" maskRepresentation:@"#"];
+    [self.textfieldMaskDni setMaskPattern:@"##-##.###.###-#" maskRepresentation:@"#"];
     self.textfieldMaskDni.keyboardType = UIKeyboardTypeNumberPad;
 }
 
