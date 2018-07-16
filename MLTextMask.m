@@ -126,7 +126,6 @@ NSString* const kEmpty = @"";
 -(void)setCurrentCursorPosition:(UITextField*)textField{
     UITextRange * selectedTextRange = textField.selectedTextRange;
     _cursorPosition = (int)[textField offsetFromPosition:textField.beginningOfDocument toPosition:selectedTextRange.start];
-    
 }
 
 -(int)nextCursorPosition{
